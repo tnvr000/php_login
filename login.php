@@ -1,3 +1,52 @@
+<?php
+  session_start();
+  if(isset($_SESSION['username'])) {
+    header("location: welcome.php");
+    exit;
+  }
+
+  require_once "config.php";
+
+  $username = $password = "";
+  $username_err = $password_err = "";
+
+  if($_SERVER['REQUEST_METHOD'] == "POST") {
+    if(empty(trim($_POST['username']))) {
+      $username_err = "Please enter username";
+    } else {
+      $username = trim($_POST['username']);
+    }
+    if(empty(trim($_POST['password']))) {
+      $password_err = "Please enter password";
+    } else {
+      $password = trim($_POST['password']);
+    }
+
+    if(empty($username_err) && empty($password_err)) {
+      $sql = "SELECT id, username, password FROM users WHERE username = ?";
+      $stmt = mysqli_prepare($conn, $sql);
+
+      mysqli_stmt_bind_param($stmt, "s", $param_username);
+      $param_username = $username;
+      if(mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_store_result($stmt);
+        if(mysqli_stmt_num_rows($stmt) == 1) {
+          mysqli_stmt_bind_result($stmt, $id, $username, $hashed_password);
+          if(mysqli_stmt_fetch($stmt)) {
+            if(password_verify($password, $hashed_password)) {
+              session_start();
+              $_SESSION['username'] = $username;
+              $_SESSION['id'] = $id;
+              $_SESSION['logged_in'] = true;
+
+              header('location: welcome.php');
+            }
+          }
+        }
+      }
+    }
+  }
+?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -38,19 +87,14 @@
   <div class="container mt-4">
     <h1>Login</h1>
     <hr />
-    <form>
+    <form action="" method="POST">
       <div class="mb-3">
         <label for="inputUsername" class="form-label">Username</label>
-        <input type="text" class="form-control" name="username" id="inputUsername" aria-describedby="usernameHelp">
-        <div id="usernameHelp" class="form-text">We'll never share your email with anyone else.</div>
+        <input type="text" class="form-control" name="username" id="inputUsername">
       </div>
       <div class="mb-3">
         <label for="inputPassword" class="form-label">Password</label>
-        <input type="password" class="form-control" id="inputPassword">
-      </div>
-      <div class="mb-3 form-check">
-        <input type="checkbox" class="form-check-input" id="exampleCheck1">
-        <label class="form-check-label" for="exampleCheck1">Check me out</label>
+        <input type="password" class="form-control" name="password" id="inputPassword">
       </div>
       <button type="submit" class="btn btn-primary">Login</button>
     </form>
